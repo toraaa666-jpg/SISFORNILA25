@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KelasKu — Platform Manajemen Kelas</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN MODAL -->
+<div id="loginModal" class="modal-overlay active">
+  <div class="modal-box login-box">
+    <div class="login-brand">
+      <div class="brand-icon">🎓</div>
+      <h1>KelasKu</h1>
+      <p>Platform manajemen kelas perkuliahan</p>
+    </div>
+    <div class="login-form">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="loginUser" placeholder="Masukkan username admin" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="Masukkan password" />
+      </div>
+      <div id="loginError" class="error-msg hidden">Username atau password salah</div>
+      <button class="btn-primary full-width" onclick="doLogin()">Masuk sebagai Admin</button>
+      <button class="btn-ghost full-width" onclick="enterAsGuest()">👁 Lihat sebagai Pengunjung</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <span class="logo-icon">🎓</span>
+      <span class="logo-text">KelasKu</span>
+    </div>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard">
+      <span class="nav-icon">⚡</span><span class="nav-label">Dashboard</span>
+    </a>
+    <a class="nav-item" onclick="showPage('kelas')" data-page="kelas">
+      <span class="nav-icon">🏫</span><span class="nav-label">Kelas</span>
+    </a>
+    <a class="nav-item" onclick="showPage('jadwal')" data-page="jadwal">
+      <span class="nav-icon">📅</span><span class="nav-label">Jadwal</span>
+    </a>
+    <a class="nav-item" onclick="showPage('absen')" data-page="absen">
+      <span class="nav-icon">✅</span><span class="nav-label">Absensi</span>
+    </a>
+    <a class="nav-item" onclick="showPage('tugas')" data-page="tugas">
+      <span class="nav-icon">📝</span><span class="nav-label">Tugas & Kelompok</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-badge" id="userBadge">
+      <span class="user-avatar" id="userAvatar">👤</span>
+      <div>
+        <div class="user-name" id="userName">Pengunjung</div>
+        <div class="user-role" id="userRole">Read Only</div>
+      </div>
+    </div>
+    <button class="btn-logout" onclick="doLogout()" id="logoutBtn" style="display:none">Keluar</button>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main-content" id="mainContent">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="mob-menu" onclick="toggleSidebar()">☰</button>
+      <h2 class="page-title" id="pageTitle">Dashboard</h2>
+    </div>
+    <div class="topbar-right">
+      <div class="admin-tag" id="adminTag">
+        <span class="dot"></span>
+        <span id="modeLabel">Mode Pengunjung</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- PAGES -->
+
+  <!-- DASHBOARD -->
+  <section class="page active" id="page-dashboard">
+    <div class="empty-hero" id="dashboardEmpty">
+      <div class="empty-illustration">🏛️</div>
+      <h2>Selamat Datang di KelasKu</h2>
+      <p>Belum ada data. Mulai dengan membuat kelas terlebih dahulu.</p>
+      <button class="btn-primary" onclick="showPage('kelas')" id="startBtn" style="display:none">Buat Kelas Pertama</button>
+    </div>
+    <div class="dashboard-grid hidden" id="dashboardStats">
+      <div class="stat-card" onclick="showPage('kelas')">
+        <div class="stat-icon">🏫</div>
+        <div class="stat-val" id="statKelas">0</div>
+        <div class="stat-label">Kelas Aktif</div>
+      </div>
+      <div class="stat-card" onclick="showPage('jadwal')">
+        <div class="stat-icon">📅</div>
+        <div class="stat-val" id="statJadwal">0</div>
+        <div class="stat-label">Jadwal Minggu Ini</div>
+      </div>
+      <div class="stat-card" onclick="showPage('tugas')">
+        <div class="stat-icon">📝</div>
+        <div class="stat-val" id="statTugas">0</div>
+        <div class="stat-label">Tugas Aktif</div>
+      </div>
+      <div class="stat-card" onclick="showPage('absen')">
+        <div class="stat-icon">✅</div>
+        <div class="stat-val" id="statSesi">0</div>
+        <div class="stat-label">Sesi Absensi</div>
+      </div>
+      <div class="upcoming-card" id="upcomingCard">
+        <h3>📅 Jadwal Terdekat</h3>
+        <div id="upcomingList"></div>
+      </div>
+      <div class="deadline-card" id="deadlineCard">
+        <h3>⏰ Deadline Terdekat</h3>
+        <div id="deadlineList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KELAS -->
+  <section class="page" id="page-kelas">
+    <div class="page-header">
+      <div>
+        <h2>Manajemen Kelas</h2>
+        <p class="subtitle">Kelola daftar kelas dan data mahasiswa</p>
+      </div>
+      <button class="btn-primary" id="btnTambahKelas" onclick="openModal('modalKelas')" style="display:none">+ Tambah Kelas</button>
+    </div>
+    <div class="empty-state hidden" id="kelasEmpty">
+      <div class="empty-illustration">🏫</div>
+      <p>Belum ada kelas. Tambahkan kelas pertama!</p>
+    </div>
+    <div class="kelas-grid" id="kelasGrid"></div>
+    <!-- Panel detail mahasiswa -->
+    <div id="kelasMhsPanel" class="mhs-panel hidden">
+      <div class="mhs-panel-header">
+        <div>
+          <h3 id="mhsPanelTitle">Daftar Mahasiswa</h3>
+          <p id="mhsPanelSubtitle" class="subtitle"></p>
+        </div>
+        <button class="btn-ghost" onclick="closeMhsPanel()">✕ Tutup</button>
+      </div>
+      <div class="mhs-table-wrap">
+        <table class="mhs-table" id="mhsTable">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nama</th>
+              <th>NIM</th>
+              <th>Gender</th>
+              <th>No. HP</th>
+              <th>Email</th>
+              <th>Keterangan</th>
+            </tr>
+          </thead>
+          <tbody id="mhsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- JADWAL -->
+  <section class="page" id="page-jadwal">
+    <div class="page-header">
+      <div>
+        <h2>Jadwal Perkuliahan</h2>
+        <p class="subtitle">Semua jadwal mata kuliah dalam satu tampilan</p>
+      </div>
+      <button class="btn-primary" id="btnTambahJadwal" onclick="openModal('modalJadwal')" style="display:none">+ Tambah Jadwal</button>
+    </div>
+    <div class="empty-state hidden" id="jadwalEmpty">
+      <div class="empty-illustration">📅</div>
+      <p>Belum ada jadwal. Buat jadwal pertama!</p>
+    </div>
+    <!-- Grid jadwal per hari -->
+    <div class="jadwal-board" id="jadwalBoard">
+      <div class="jadwal-board-col" id="jcol-Senin">
+        <div class="jadwal-col-header jh-senin">Senin</div>
+        <div class="jadwal-col-body" id="jbody-Senin"></div>
+      </div>
+      <div class="jadwal-board-col" id="jcol-Selasa">
+        <div class="jadwal-col-header jh-selasa">Selasa</div>
+        <div class="jadwal-col-body" id="jbody-Selasa"></div>
+      </div>
+      <div class="jadwal-board-col" id="jcol-Rabu">
+        <div class="jadwal-col-header jh-rabu">Rabu</div>
+        <div class="jadwal-col-body" id="jbody-Rabu"></div>
+      </div>
+      <div class="jadwal-board-col" id="jcol-Kamis">
+        <div class="jadwal-col-header jh-kamis">Kamis</div>
+        <div class="jadwal-col-body" id="jbody-Kamis"></div>
+      </div>
+      <div class="jadwal-board-col" id="jcol-Jumat">
+        <div class="jadwal-col-header jh-jumat">Jumat</div>
+        <div class="jadwal-col-body" id="jbody-Jumat"></div>
+      </div>
+      <div class="jadwal-board-col" id="jcol-Sabtu">
+        <div class="jadwal-col-header jh-sabtu">Sabtu</div>
+        <div class="jadwal-col-body" id="jbody-Sabtu"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABSENSI -->
+  <section class="page" id="page-absen">
+    <div class="page-header">
+      <div>
+        <h2>Absensi</h2>
+        <p class="subtitle">Rekap kehadiran mahasiswa</p>
+      </div>
+      <button class="btn-primary" id="btnTambahAbsen" onclick="openModal('modalAbsen')" style="display:none">+ Buat Sesi Absen</button>
+    </div>
+    <div class="empty-state hidden" id="absenEmpty">
+      <div class="empty-illustration">✅</div>
+      <p>Belum ada sesi absensi.</p>
+    </div>
+    <div class="absen-list" id="absenList"></div>
+  </section>
+
+  <!-- TUGAS & KELOMPOK -->
+  <section class="page" id="page-tugas">
+    <div class="page-header">
+      <div>
+        <h2>Tugas & Kelompok</h2>
+        <p class="subtitle">Kelola tugas dan shuffle kelompok otomatis</p>
+      </div>
+      <button class="btn-primary" id="btnTambahTugas" onclick="openModal('modalTugas')" style="display:none">+ Tambah Tugas</button>
+    </div>
+    <div class="empty-state hidden" id="tugasEmpty">
+      <div class="empty-illustration">📝</div>
+      <p>Belum ada tugas. Buat tugas dan shuffle kelompok!</p>
+    </div>
+    <div class="tugas-list" id="tugasList"></div>
+  </section>
+
+</main>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Modal Kelas -->
+<div class="modal-overlay" id="modalKelas">
+  <div class="modal-box modal-large">
+    <div class="modal-header">
+      <h3 id="modalKelasTitle">Tambah Kelas</h3>
+      <button class="modal-close" onclick="closeModal('modalKelas')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="kelasEditId">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nama Kelas *</label>
+          <input type="text" id="kelasNama" placeholder="Contoh: IF-A 2023" />
+        </div>
+        <div class="form-group">
+          <label>Warna Label</label>
+          <div class="color-picker" id="kelasPicker">
+            <div class="color-opt active" style="background:#6366f1" data-color="#6366f1"></div>
+            <div class="color-opt" style="background:#ec4899" data-color="#ec4899"></div>
+            <div class="color-opt" style="background:#f59e0b" data-color="#f59e0b"></div>
+            <div class="color-opt" style="background:#10b981" data-color="#10b981"></div>
+            <div class="color-opt" style="background:#3b82f6" data-color="#3b82f6"></div>
+            <div class="color-opt" style="background:#ef4444" data-color="#ef4444"></div>
+            <div class="color-opt" style="background:#8b5cf6" data-color="#8b5cf6"></div>
+            <div class="color-opt" style="background:#14b8a6" data-color="#14b8a6"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-divider">
+        <span>👥 Daftar Mahasiswa</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button type="button" class="btn-sm btn-edit" onclick="tambahBarisMhs()">+ Baris</button>
+          <button type="button" class="btn-sm btn-import" onclick="triggerImport()">📂 Import File</button>
+          <input type="file" id="importFileInput" accept=".csv,.txt,.xlsx,.xls,.docx" style="display:none" onchange="handleImportFile(this)" />
+        </div>
+      </div>
+
+      <!-- Import helper panel -->
+      <div id="importHelperPanel" class="import-helper hidden">
+        <div class="import-helper-header">
+          <span id="importHelperTitle">📄 Preview Import</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn-sm btn-edit" onclick="applyImport()">✅ Terapkan</button>
+            <button class="btn-sm btn-del" onclick="cancelImport()">✕ Batal</button>
+          </div>
+        </div>
+        <div id="importHelperBody" class="import-helper-body"></div>
+        <div class="import-format-hint">
+          <strong>Format kolom yang didukung:</strong>
+          Nama · NIM · Gender (L/P) · No.HP · Email · Keterangan
+          <br>Baris pertama boleh header, akan diabaikan otomatis.
+        </div>
+      </div>
+
+      <div class="mhs-input-table-wrap">
+        <table class="mhs-input-table">
+          <thead>
+            <tr>
+              <th style="width:40px">No</th>
+              <th>Nama Lengkap *</th>
+              <th style="width:140px">NIM</th>
+              <th style="width:100px">Gender</th>
+              <th style="width:130px">No. HP</th>
+              <th style="width:170px">Email</th>
+              <th>Keterangan</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="mhsInputBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modalKelas')">Batal</button>
+      <button class="btn-primary" onclick="saveKelas()">Simpan Kelas</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Jadwal -->
+<div class="modal-overlay" id="modalJadwal">
+  <div class="modal-box modal-large">
+    <div class="modal-header">
+      <h3 id="modalJadwalTitle">Tambah Jadwal</h3>
+      <button class="modal-close" onclick="closeModal('modalJadwal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="jadwalEditId">
+
+      <div class="form-divider"><span>📚 Informasi Mata Kuliah</span></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Kelas *</label>
+          <select id="jadwalKelas">
+            <option value="">Pilih Kelas</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nama Mata Kuliah *</label>
+          <input type="text" id="jadwalMatkul" placeholder="Rekayasa Perangkat Lunak" />
+        </div>
+        <div class="form-group" style="max-width:90px">
+          <label>Kode MK</label>
+          <input type="text" id="jadwalKodeMk" placeholder="IF-301" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Dosen Pengampu *</label>
+          <input type="text" id="jadwalDosen" placeholder="Nama lengkap dosen" />
+        </div>
+        <div class="form-group" style="max-width:80px">
+          <label>SKS</label>
+          <input type="number" id="jadwalSks" placeholder="3" min="1" max="6" />
+        </div>
+        <div class="form-group" style="max-width:140px">
+          <label>Semester</label>
+          <input type="text" id="jadwalSemester" placeholder="Ganjil 24/25" />
+        </div>
+      </div>
+
+      <div class="form-divider"><span>📅 Waktu & Tempat</span></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Hari *</label>
+          <select id="jadwalHari">
+            <option value="">Pilih Hari</option>
+            <option>Senin</option><option>Selasa</option><option>Rabu</option>
+            <option>Kamis</option><option>Jumat</option><option>Sabtu</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Jam Mulai *</label>
+          <input type="time" id="jadwalMulai" />
+        </div>
+        <div class="form-group">
+          <label>Jam Selesai *</label>
+          <input type="time" id="jadwalSelesai" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ruangan</label>
+          <input type="text" id="jadwalRuangan" placeholder="Gedung A - Ruang 201" />
+        </div>
+        <div class="form-group">
+          <label>Mode Perkuliahan</label>
+          <select id="jadwalMode">
+            <option value="offline">🏫 Offline</option>
+            <option value="online">💻 Online</option>
+            <option value="hybrid">🔀 Hybrid</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Link (jika Online)</label>
+          <input type="text" id="jadwalLink" placeholder="https://meet.google.com/..." />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Catatan Tambahan</label>
+        <input type="text" id="jadwalCatatan" placeholder="Contoh: Bawa laptop, UTS minggu ini, dll." />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modalJadwal')">Batal</button>
+      <button class="btn-primary" onclick="saveJadwal()">Simpan Jadwal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Absen -->
+<div class="modal-overlay" id="modalAbsen">
+  <div class="modal-box modal-large">
+    <div class="modal-header">
+      <h3>Buat Sesi Absensi</h3>
+      <button class="modal-close" onclick="closeModal('modalAbsen')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Kelas *</label>
+          <select id="absenKelas" onchange="loadMahasiswaAbsen()">
+            <option value="">Pilih Kelas</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tanggal *</label>
+          <input type="date" id="absenTanggal" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Pertemuan ke / Topik</label>
+        <input type="text" id="absenTopik" placeholder="Pertemuan 1 - Pengenalan" />
+      </div>
+      <div id="absenMhsList" class="absen-mhs-grid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modalAbsen')">Batal</button>
+      <button class="btn-primary" onclick="saveAbsen()">Simpan Absensi</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tugas -->
+<div class="modal-overlay" id="modalTugas">
+  <div class="modal-box modal-large">
+    <div class="modal-header">
+      <h3 id="modalTugasTitle">Tambah Tugas</h3>
+      <button class="modal-close" onclick="closeModal('modalTugas')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="tugasEditId">
+      <div class="form-group">
+        <label>Nama Tugas *</label>
+        <input type="text" id="tugasNama" placeholder="Nama tugas / proyek" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Kelas *</label>
+          <select id="tugasKelas" onchange="updateTugasKelasInfo()">
+            <option value="">Pilih Kelas</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Mata Kuliah</label>
+          <input type="text" id="tugasMatkul" placeholder="(otomatis dari kelas)" readonly />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tema / Deskripsi</label>
+        <textarea id="tugasTema" rows="3" placeholder="Deskripsi atau tema tugas..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Deadline *</label>
+          <input type="datetime-local" id="tugasDeadline" />
+        </div>
+        <div class="form-group">
+          <label>Tipe</label>
+          <select id="tugasTipe">
+            <option value="individu">Individu</option>
+            <option value="kelompok">Kelompok</option>
+          </select>
+        </div>
+      </div>
+      <div id="kelompokSection">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Jumlah Anggota per Kelompok</label>
+            <input type="number" id="tugasJmlAnggota" value="3" min="2" max="10" />
+          </div>
+          <div class="form-group flex-end">
+            <button class="btn-shuffle" onclick="doShuffle()">🔀 Shuffle Kelompok</button>
+          </div>
+        </div>
+        <div id="shuffleResult" class="shuffle-result hidden"></div>
+      </div>
+      <div class="form-group">
+        <label>Link / Referensi</label>
+        <input type="text" id="tugasLink" placeholder="https://..." />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modalTugas')">Batal</button>
+      <button class="btn-primary" onclick="saveTugas()">Simpan Tugas</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detail Absen -->
+<div class="modal-overlay" id="modalAbsenDetail">
+  <div class="modal-box modal-large">
+    <div class="modal-header">
+      <h3 id="absenDetailTitle">Detail Absensi</h3>
+      <button class="modal-close" onclick="closeModal('modalAbsenDetail')">✕</button>
+    </div>
+    <div class="modal-body" id="absenDetailBody"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<!-- Import Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
