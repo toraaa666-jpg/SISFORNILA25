@@ -1,6 +1,3 @@
-// ============================
-// FIREBASE CONFIG
-// ============================
 const firebaseConfig = {
   apiKey: "AIzaSyBKZriAa__A646o7kMmK5QQALxYQLVNK0M",
 
@@ -18,7 +15,6 @@ const firebaseConfig = {
 
 };
 
-// Firebase Safe Init
 let db = null;
 let firebaseReady = false;
 try {
@@ -29,7 +25,6 @@ try {
   }
 } catch (e) { console.warn("Firebase error:", e); }
 
-// LocalStorage fallback
 function lsGet(k) { try { return JSON.parse(localStorage.getItem('kku_'+k)||'{}'); } catch { return {}; } }
 function lsSet(k, v) { try { localStorage.setItem('kku_'+k, JSON.stringify(v)); } catch {} }
 
@@ -55,27 +50,23 @@ function scheduleRender() {
   _rt = setTimeout(()=>{ renderKelas();renderJadwal();renderAbsen();renderTugas();updateDashboard();populateSelects();renderTabBars(); }, 50);
 }
 function loadLocalData() {
-  ['kelas','jadwal','absen','tugas','gabungan'].forEach(k => { appData[k] = lsGet(k); });
+  ['kelas','jadwal','absen','tugas','gabungan','gabunganTugas'].forEach(k => { appData[k] = lsGet(k); });
 }
 
-// Admin credentials — ganti sebelum deploy!
 const ADMINS = [
-  { username: "admin", password: "kelas2024" },
+  { username: "admin", password: "sisteminformasi25unila" },
   { username: "dosen", password: "dosen123" }
 ];
 
-// State
 let isAdmin = false;
 let currentUser = null;
-let appData = { kelas:{}, jadwal:{}, absen:{}, tugas:{}, gabungan:{} };
+let appData = { kelas:{}, jadwal:{}, absen:{}, tugas:{}, gabungan:{}, gabunganTugas:{} };
 let selectedColor = "#6366f1";
 let shuffledGroups = [];
 let activeJadwalKelas = 'semua';
 let activeAbsenKelas = 'semua';
+let activeTugasKelas = 'semua';
 
-// ============================
-// AUTH
-// ============================
 function doLogin() {
   const user = document.getElementById('loginUser').value.trim();
   const pass = document.getElementById('loginPass').value;
@@ -107,9 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 });
 
-// ============================
-// INIT
-// ============================
 function initApp() {
   updateAdminUI();
   if (firebaseReady) {
@@ -131,13 +119,9 @@ function showFirebaseWarning() {
   document.body.appendChild(bar);
 }
 
-// ============================
-// UPDATE ADMIN UI
-// ============================
 function updateAdminUI() {
-  // Tampilkan/sembunyikan tombol admin dengan getElementById + inline style
   var show = isAdmin ? 'inline-block' : 'none';
-  var adminBtns = ['logoutBtn','startBtn','btnTambahKelas','btnTambahJadwal','btnTambahAbsen','btnTambahTugas','btnTambahGabungan'];
+  var adminBtns = ['logoutBtn','startBtn','btnTambahKelas','btnTambahJadwal','btnTambahAbsen','btnTambahTugas','btnTambahGabungan','btnTambahTugasGabungan'];
   adminBtns.forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.style.display = show;
@@ -151,20 +135,15 @@ function updateAdminUI() {
   document.getElementById('userAvatar').textContent = isAdmin ? '👑' : '👤';
 }
 
-// ============================
-// FIREBASE LISTENERS
-// ============================
 function listenFirebase() {
   db.ref('kelas').on('value', snap => { appData.kelas = snap.val()||{}; renderKelas(); updateDashboard(); populateSelects(); renderTabBars(); });
   db.ref('jadwal').on('value', snap => { appData.jadwal = snap.val()||{}; renderJadwal(); updateDashboard(); renderTabBars(); });
   db.ref('gabungan').on('value', snap => { appData.gabungan = snap.val()||{}; renderJadwal(); updateDashboard(); });
   db.ref('absen').on('value', snap => { appData.absen = snap.val()||{}; renderAbsen(); updateDashboard(); renderTabBars(); });
   db.ref('tugas').on('value', snap => { appData.tugas = snap.val()||{}; renderTugas(); updateDashboard(); });
+  db.ref('gabunganTugas').on('value', snap => { appData.gabunganTugas = snap.val()||{}; renderTugas(); updateDashboard(); });
 }
 
-// ============================
-// NAVIGATION
-// ============================
 function showPage(page, pushState = true) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -178,13 +157,9 @@ function showPage(page, pushState = true) {
 }
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
 
-// ============================
-// MODALS
-// ============================
 function openModal(id) {
   if (!isAdmin) { showToast('Anda tidak memiliki akses admin', 'error'); return; }
   document.getElementById(id).classList.add('active');
-  // Init tabel mahasiswa jika buka modal kelas baru
   if (id === 'modalKelas') {
     var tbody = document.getElementById('mhsInputBody');
     if (tbody && tbody.rows.length === 0) tambahBarisMhs();
@@ -196,7 +171,6 @@ window.addEventListener('click', e => {
     e.target.classList.remove('active');
 });
 
-// Color picker
 document.querySelectorAll('.color-opt').forEach(el => {
   el.addEventListener('click', () => {
     document.querySelectorAll('.color-opt').forEach(o => o.classList.remove('active'));
@@ -205,9 +179,6 @@ document.querySelectorAll('.color-opt').forEach(el => {
   });
 });
 
-// ============================
-// POPULATE SELECTS
-// ============================
 function populateSelects() {
   ['jadwalKelas','absenKelas','tugasKelas'].forEach(sid => {
     const sel = document.getElementById(sid); if (!sel) return;
@@ -218,9 +189,6 @@ function populateSelects() {
   });
 }
 
-// ============================
-// DASHBOARD
-// ============================
 function updateDashboard() {
   const kLen=Object.keys(appData.kelas).length, jLen=Object.keys(appData.jadwal).length;
   const tLen=Object.keys(appData.tugas).length, aLen=Object.keys(appData.absen).length;
@@ -228,7 +196,6 @@ function updateDashboard() {
 
   document.getElementById('dashboardEmpty').classList.toggle('hidden', hasData);
   document.getElementById('dashboardStats').classList.toggle('hidden', !hasData);
-  // startBtn sudah dihandle oleh updateAdminUI via class admin-hidden
   if (!hasData) return;
 
   document.getElementById('statKelas').textContent = kLen;
@@ -238,33 +205,43 @@ function updateDashboard() {
 
   const days=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
   const todayIdx = (new Date().getDay()+6)%7;
-  const jadwals = Object.values(appData.jadwal).sort((a,b)=>
-    ((days.indexOf(a.hari)-todayIdx+7)%7)-((days.indexOf(b.hari)-todayIdx+7)%7)||a.mulai.localeCompare(b.mulai));
+  const sortFn = (a,b) => ((days.indexOf(a.hari)-todayIdx+7)%7)-((days.indexOf(b.hari)-todayIdx+7)%7)||a.mulai.localeCompare(b.mulai);
+  const jadwalRegular = Object.values(appData.jadwal).map(j=>({...j,_type:'reguler'}));
+  const jadwalGab = Object.values(appData.gabungan||{}).map(j=>({...j,_type:'gabungan'}));
+  const jadwals = jadwalRegular.concat(jadwalGab).sort(sortFn);
 
   const upList = document.getElementById('upcomingList');
   upList.innerHTML = jadwals.length===0 ? '<div style="color:var(--text3);font-size:13px">Belum ada jadwal</div>'
     : jadwals.slice(0,4).map(j => {
-        const k=appData.kelas[j.kelasId], c=k?.warna||'#6366f1';
-        return '<div class="upcoming-item"><div class="upcoming-dot" style="background:'+c+'"></div><div class="upcoming-text"><div style="font-weight:600;font-size:13px">'+(k?.nama||j.kelasId)+'</div><div style="color:var(--text3);font-size:12px">'+j.hari+'</div></div><div class="upcoming-time">'+j.mulai+' – '+j.selesai+'</div></div>';
+        let nama, c;
+        if (j._type === 'gabungan') {
+          const chips = (j.kelasList||[]).map(kid=>appData.kelas[kid]?.nama||'').filter(Boolean).join(', ');
+          nama = '<span style="color:#f59e0b">🔗</span> ' + chips;
+          c = '#f59e0b';
+        } else {
+          const k = appData.kelas[j.kelasId];
+          nama = k?.nama || j.kelasId;
+          c = k?.warna || '#6366f1';
+        }
+        return '<div class="upcoming-item"><div class="upcoming-dot" style="background:'+c+'"></div><div class="upcoming-text"><div style="font-weight:600;font-size:13px">'+nama+'</div><div style="color:var(--text3);font-size:12px">'+j.hari+(j.matkul?' · '+j.matkul:'')+'</div></div><div class="upcoming-time">'+j.mulai+' – '+j.selesai+'</div></div>';
       }).join('');
 
   const now=new Date();
-  const tugasArr=Object.values(appData.tugas).filter(t=>t.deadline&&new Date(t.deadline)>now).sort((a,b)=>new Date(a.deadline)-new Date(b.deadline));
+  const tugasRegular = Object.values(appData.tugas).filter(t=>t.deadline&&new Date(t.deadline)>now);
+  const tugasGab = Object.values(appData.gabunganTugas||{}).filter(t=>t.deadline&&new Date(t.deadline)>now);
+  const tugasArr = tugasRegular.concat(tugasGab).sort((a,b)=>new Date(a.deadline)-new Date(b.deadline));
   const dlList=document.getElementById('deadlineList');
   dlList.innerHTML = tugasArr.length===0 ? '<div style="color:var(--text3);font-size:13px">Tidak ada deadline terdekat</div>'
     : tugasArr.slice(0,4).map(t => {
-        const k=appData.kelas[t.kelasId], diff=Math.ceil((new Date(t.deadline)-now)/86400000);
+        const kNama = t.isGabungan
+          ? (t.kelasList||[]).map(kid=>appData.kelas[kid]?.nama||'').filter(Boolean).join(', ')
+          : (appData.kelas[t.kelasId]?.nama||'');
+        const diff=Math.ceil((new Date(t.deadline)-now)/86400000);
         const c=diff<=3?'var(--danger)':'var(--warning)';
-        return '<div class="upcoming-item"><div class="upcoming-dot" style="background:'+c+'"></div><div class="upcoming-text"><div style="font-weight:600;font-size:13px">'+t.nama+'</div><div style="color:var(--text3);font-size:12px">'+(k?.nama||'')+'</div></div><div class="upcoming-time" style="color:'+c+'">'+(diff===0?'Hari ini':diff+'h lagi')+'</div></div>';
+        return '<div class="upcoming-item"><div class="upcoming-dot" style="background:'+c+'"></div><div class="upcoming-text"><div style="font-weight:600;font-size:13px">'+t.nama+(t.isGabungan?' <span style="font-size:10px;color:#f59e0b">🔗</span>':'')+' </div><div style="color:var(--text3);font-size:12px">'+kNama+'</div></div><div class="upcoming-time" style="color:'+c+'">'+(diff===0?'Hari ini':diff+'h lagi')+'</div></div>';
       }).join('');
 }
 
-// ============================
-// KELAS
-// ============================
-// ============================
-// IMPORT MAHASISWA
-// ============================
 var importPreviewData = [];
 
 function triggerImport() {
@@ -317,17 +294,13 @@ function handleImportFile(input) {
   } else {
     showToast('Format tidak didukung. Gunakan CSV, TXT, XLSX, atau DOCX.', 'error');
   }
-  // Reset input supaya bisa import file yang sama lagi
   input.value = '';
 }
 
 function parseCSV(text) {
-  // Support delimiter: koma, titik koma, tab
   var lines = text.split(/\r?\n/).filter(function(l){ return l.trim(); });
   return lines.map(function(line) {
-    // Deteksi delimiter
     var delim = line.indexOf(';') > -1 ? ';' : line.indexOf('\t') > -1 ? '\t' : ',';
-    // Handle quoted fields
     var result = [], cur = '', inQ = false;
     for (var i = 0; i < line.length; i++) {
       var c = line[i];
@@ -341,33 +314,27 @@ function parseCSV(text) {
 }
 
 function parseTextTable(text) {
-  // Ambil baris dari teks DOCX — support tab-separated atau spasi banyak
   var lines = text.split(/\r?\n/).filter(function(l){ return l.trim(); });
   return lines.map(function(line) {
     if (line.indexOf('\t') > -1) return line.split('\t').map(function(s){return s.trim();});
-    // Coba split by 2+ spasi
     var parts = line.split(/  +/);
     if (parts.length > 1) return parts.map(function(s){return s.trim();});
-    // Fallback: satu kolom (nama saja)
     return [line.trim()];
   });
 }
 
-// Deteksi apakah baris adalah header
 function isHeaderRow(row) {
   var headers = ['nama','name','nim','nrp','nip','mahasiswa','student','no','nomor','gender','jk','sex','hp','telp','phone','email','ket','keterangan'];
   var first = (row[0]||'').toLowerCase().trim();
   return headers.some(function(h){ return first.indexOf(h) > -1; });
 }
 
-// Map kolom otomatis berdasarkan header atau urutan
 function mapColumns(rows) {
   if (rows.length === 0) return [];
   var dataRows = rows;
   var colMap = { nama:-1, nim:-1, gender:-1, hp:-1, email:-1, ket:-1 };
 
   if (isHeaderRow(rows[0])) {
-    // Pakai baris pertama sebagai header
     var headers = rows[0].map(function(h){ return (h||'').toLowerCase().trim(); });
     headers.forEach(function(h, i) {
       if (/nama|name|mahasiswa|student/.test(h)) colMap.nama = i;
@@ -380,7 +347,6 @@ function mapColumns(rows) {
     dataRows = rows.slice(1);
   }
 
-  // Jika header tidak terdeteksi, pakai urutan default: Nama, NIM, Gender, HP, Email, Ket
   if (colMap.nama === -1) {
     colMap = { nama:0, nim:1, gender:2, hp:3, email:4, ket:5 };
   }
@@ -432,7 +398,6 @@ function showImportPreview(rows) {
 
   body.innerHTML = html;
 
-  // Stats
   var stats = document.createElement('div');
   stats.className = 'import-stats';
   stats.innerHTML = '<span class="import-stat">Terdeteksi: <strong>' + importPreviewData.length + ' mahasiswa</strong></span>'
@@ -446,7 +411,6 @@ function showImportPreview(rows) {
 function applyImport() {
   if (importPreviewData.length === 0) return;
   var valid = importPreviewData.filter(function(m){ return m.nama; });
-  // Append ke tabel yang sudah ada (bukan replace)
   valid.forEach(function(m){ tambahBarisMhs(m); });
   cancelImport();
   showToast('✅ ' + valid.length + ' mahasiswa berhasil diimport!', 'success');
@@ -456,7 +420,6 @@ function cancelImport() {
   document.getElementById('importHelperPanel').classList.add('hidden');
   document.getElementById('importHelperBody').innerHTML = '';
   importPreviewData = [];
-  // Hapus stats jika ada
   var stats = document.querySelector('.import-stats');
   if (stats) stats.remove();
 }
@@ -607,10 +570,6 @@ function renderKelas() {
   grid.innerHTML = html;
 }
 
-
-// ============================
-// JADWAL
-// ============================
 var DAYS = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 
 var HCLR = {
@@ -689,7 +648,6 @@ function deleteJadwal(id) {
 }
 
 function buildJadwalCard(id, j, hc, type) {
-  // type: 'reguler' | 'gabungan'
   var durasi = calcDurasi(j.mulai, j.selesai);
   var modeLbl = j.mode==='online'?'💻 Online':j.mode==='hybrid'?'🔀 Hybrid':'🏫 Offline';
   var modeCls = j.mode==='online'?'jmode-online':j.mode==='hybrid'?'jmode-hybrid':'jmode-offline';
@@ -747,14 +705,11 @@ function renderJadwal() {
   empty.classList.add('hidden');
   board.style.display = '';
 
-  // Filter
   var filter = activeJadwalKelas;
 
-  // Kelompokkan per hari
   var byDay = {};
   DAYS.forEach(function(d){ byDay[d]=[]; });
 
-  // Jadwal reguler
   entries.forEach(function(e){
     var id=e[0], j=e[1];
     if (!j.hari) return;
@@ -763,7 +718,6 @@ function renderJadwal() {
     if(byDay[j.hari]) byDay[j.hari].push({id:id, data:j, type:'reguler'});
   });
 
-  // Jadwal gabungan
   gabEntries.forEach(function(e){
     var id=e[0], j=e[1];
     if (!j.hari) return;
@@ -790,10 +744,6 @@ function renderJadwal() {
   });
 }
 
-
-// ============================
-// ABSENSI
-// ============================
 function getMhsNama(m) {
   if (typeof m === 'string') return m;
   return m.nama || '(tanpa nama)';
@@ -896,9 +846,6 @@ function renderAbsen() {
   }).join('');
 }
 
-// ============================
-// TUGAS & KELOMPOK
-// ============================
 function updateTugasKelasInfo() {
   const k=appData.kelas[document.getElementById('tugasKelas').value];
   document.getElementById('tugasMatkul').value=k?.matkul||'';
@@ -966,38 +913,74 @@ function deleteTugas(id) {
   if(!confirm('Hapus tugas ini?')) return;
   dbRemove('tugas',id).then(()=>showToast('Tugas dihapus','success'));
 }
-function renderTugas() {
-  const list=document.getElementById('tugasList'), empty=document.getElementById('tugasEmpty');
-  const entries=Object.entries(appData.tugas).sort((a,b)=>new Date(a[1].deadline)-new Date(b[1].deadline));
-  if(entries.length===0){ empty.classList.remove('hidden'); list.innerHTML=''; return; }
-  empty.classList.add('hidden');
-  const now=new Date();
-  list.innerHTML=entries.map(([id,t])=>{
-    const k=appData.kelas[t.kelasId], dl=t.deadline?new Date(t.deadline):null;
-    const isOverdue=dl&&dl<now, diff=dl?Math.ceil((dl-now)/86400000):null;
-    let dlb='';
-    if(dl){ if(isOverdue) dlb='<span class="badge badge-overdue">⚠️ Terlambat</span>'; else if(diff===0) dlb='<span class="badge badge-overdue">🔥 Hari ini!</span>'; else dlb='<span class="badge badge-deadline">⏰ '+formatDatetime(t.deadline)+'</span>'; }
-    return '<div class="tugas-card"'+(isOverdue?' style="opacity:0.75"':'')+'>'+
-      '<div class="tugas-card-header"><div>'+
-        '<div class="tugas-nama">'+t.nama+'</div>'+
-        '<div class="tugas-badges">'+
-          (k?'<span class="badge badge-kelas">🏫 '+k.nama+'</span>':'')+
-          (t.matkul?'<span class="badge badge-kelas" style="background:rgba(20,184,166,0.15);color:var(--accent2);border-color:rgba(20,184,166,0.25)">📚 '+t.matkul+'</span>':'')+
-          '<span class="badge badge-tipe">'+(t.tipe==='kelompok'?'👥 Kelompok':'👤 Individu')+'</span>'+
-          dlb+
-        '</div></div>'+
-      (isAdmin?'<div style="display:flex;gap:8px;flex-shrink:0"><button class="btn-sm btn-edit" onclick="editTugas(\''+id+'\')">✏️</button><button class="btn-sm btn-del" onclick="deleteTugas(\''+id+'\')">🗑</button></div>':'')+
-      '</div>'+
-      (t.tema?'<div class="tugas-tema">'+t.tema+'</div>':'')+
-      (t.link?'<div style="padding:0 20px 14px"><a href="'+t.link+'" target="_blank" style="color:var(--accent2);font-size:13px">🔗 '+t.link+'</a></div>':'')+
-      (t.kelompok&&t.kelompok.length>0?
-        '<div class="tugas-kelompok"><div class="kelompok-title">👥 Pembagian Kelompok ('+t.kelompok.length+' kelompok)</div>'+
-        '<div class="kelompok-grid">'+t.kelompok.map((g,i)=>'<div class="kelompok-item"><div class="kelompok-num">Kelompok '+(i+1)+'</div><div class="kelompok-members">'+g.map(m=>'<div class="kelompok-member">• '+m+'</div>').join('')+'</div></div>').join('')+'</div></div>':'')
-      +'</div>';
-  }).join('');
+function buildTugasCard(id, t, isGabungan) {
+  const now = new Date();
+  const dl = t.deadline ? new Date(t.deadline) : null;
+  const isOverdue = dl && dl < now;
+  const diff = dl ? Math.ceil((dl - now) / 86400000) : null;
+  let dlb = '';
+  if (dl) {
+    if (isOverdue) dlb = '<span class="badge badge-overdue">\u26a0\ufe0f Terlambat</span>';
+    else if (diff === 0) dlb = '<span class="badge badge-overdue">\U0001f525 Hari ini!</span>';
+    else dlb = '<span class="badge badge-deadline">\u23f0 ' + formatDatetime(t.deadline) + '</span>';
+  }
+  var kelasBadge = '';
+  if (isGabungan) {
+    kelasBadge = '<span class="badge" style="background:rgba(245,158,11,0.12);color:#f59e0b;border-color:rgba(245,158,11,0.3)">\U0001f517 Gabungan</span>'
+      + (t.kelasList||[]).map(function(kid){ var kk=appData.kelas[kid]; return kk?'<span class="badge badge-kelas">'+kk.nama+'</span>':''; }).join('');
+  } else {
+    const k = appData.kelas[t.kelasId];
+    kelasBadge = k ? '<span class="badge badge-kelas">\U0001f3eb ' + k.nama + '</span>' : '';
+  }
+  var editBtn = isGabungan
+    ? '<button class="btn-sm btn-edit" onclick="editTugasGabungan(\'' + id + '\')">\u270f\ufe0f</button><button class="btn-sm btn-del" onclick="deleteTugasGabungan(\'' + id + '\')">\U0001f5d1</button>'
+    : '<button class="btn-sm btn-edit" onclick="editTugas(\'' + id + '\')">\u270f\ufe0f</button><button class="btn-sm btn-del" onclick="deleteTugas(\'' + id + '\')">\U0001f5d1</button>';
+  return '<div class="tugas-card' + (isGabungan ? ' tugas-card-gabungan' : '') + '"' + (isOverdue ? ' style="opacity:0.75"' : '') + '>'
+    + '<div class="tugas-card-header"><div>'
+      + '<div class="tugas-nama">' + t.nama + '</div>'
+      + '<div class="tugas-badges">'
+        + kelasBadge
+        + (t.matkul ? '<span class="badge badge-kelas" style="background:rgba(20,184,166,0.15);color:var(--accent2);border-color:rgba(20,184,166,0.25)">\U0001f4da ' + t.matkul + '</span>' : '')
+        + '<span class="badge badge-tipe">' + (t.tipe === 'kelompok' ? '\U0001f465 Kelompok' : '\U0001f464 Individu') + '</span>'
+        + dlb
+      + '</div></div>'
+    + (isAdmin ? '<div style="display:flex;gap:8px;flex-shrink:0">' + editBtn + '</div>' : '')
+    + '</div>'
+    + (t.tema ? '<div class="tugas-tema">' + t.tema + '</div>' : '')
+    + (t.link ? '<div style="padding:0 20px 14px"><a href="' + t.link + '" target="_blank" style="color:var(--accent2);font-size:13px">\U0001f517 ' + t.link + '</a></div>' : '')
+    + (t.kelompok && t.kelompok.length > 0
+        ? '<div class="tugas-kelompok"><div class="kelompok-title">\U0001f465 Pembagian Kelompok (' + t.kelompok.length + ' kelompok)</div>'
+          + '<div class="kelompok-grid">' + t.kelompok.map((g, i) => '<div class="kelompok-item"><div class="kelompok-num">Kelompok ' + (i + 1) + '</div><div class="kelompok-members">' + g.map(m => '<div class="kelompok-member">\u2022 ' + m + '</div>').join('') + '</div></div>').join('') + '</div></div>'
+        : '')
+    + '</div>';
 }
 
-// Tugas tipe toggle
+function renderTugas() {
+  const list = document.getElementById('tugasList'), empty = document.getElementById('tugasEmpty');
+  const regularEntries = Object.entries(appData.tugas).sort((a,b)=>new Date(a[1].deadline)-new Date(b[1].deadline));
+  const gabunganEntries = Object.entries(appData.gabunganTugas||{}).sort((a,b)=>new Date(a[1].deadline)-new Date(b[1].deadline));
+  const hasAny = regularEntries.length > 0 || gabunganEntries.length > 0;
+  if (!hasAny) { empty.classList.remove('hidden'); list.innerHTML = ''; return; }
+  empty.classList.add('hidden');
+  let entries = [];
+  if (activeTugasKelas === 'semua') {
+    entries = regularEntries.map(([id,t])=>({id,t,isGabungan:false}))
+      .concat(gabunganEntries.map(([id,t])=>({id,t,isGabungan:true})))
+      .sort((a,b)=>new Date(a.t.deadline)-new Date(b.t.deadline));
+  } else if (activeTugasKelas === 'gabungan') {
+    entries = gabunganEntries.map(([id,t])=>({id,t,isGabungan:true}));
+  } else {
+    entries = regularEntries.filter(([id,t])=>t.kelasId===activeTugasKelas).map(([id,t])=>({id,t,isGabungan:false}))
+      .concat(gabunganEntries.filter(([id,t])=>(t.kelasList||[]).includes(activeTugasKelas)).map(([id,t])=>({id,t,isGabungan:true})))
+      .sort((a,b)=>new Date(a.t.deadline)-new Date(b.t.deadline));
+  }
+  if (entries.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:48px 0;color:var(--text3)"><div style="font-size:40px;margin-bottom:12px">\U0001f4dd</div><p>Belum ada tugas untuk filter ini.</p></div>';
+    return;
+  }
+  list.innerHTML = entries.map(({id,t,isGabungan}) => buildTugasCard(id, t, isGabungan)).join('');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const tipe = document.getElementById('tugasTipe');
   if (tipe) tipe.addEventListener('change', function(){ document.getElementById('kelompokSection').style.display=this.value==='kelompok'?'':'none'; });
@@ -1007,9 +990,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 });
 
-// ============================
-// UTILS
-// ============================
 function formatDate(str) {
   if(!str) return '–';
   return new Date(str).toLocaleDateString('id-ID',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
@@ -1026,12 +1006,10 @@ function showToast(msg, type='success') {
 }
 
 selectedColor = "#6366f1";
-// ============================
-// TAB BAR FILTER (Jadwal & Absen)
-// ============================
 function renderTabBars() {
   renderJadwalTabBar();
   renderAbsenTabBar();
+  renderTugasTabBar();
 }
 
 function renderJadwalTabBar() {
@@ -1063,6 +1041,26 @@ function renderAbsenTabBar() {
   bar.innerHTML = html;
 }
 
+function renderTugasTabBar() {
+  var bar = document.getElementById('tugasTabBar');
+  if (!bar) return;
+  var kelas = Object.entries(appData.kelas);
+  var html = '<button class="kelas-tab-btn' + (activeTugasKelas==='semua'?' active':'') + '" onclick="setTugasKelas(\'semua\')">📋 Semua</button>';
+  html += '<button class="kelas-tab-btn kelas-tab-gabungan' + (activeTugasKelas==='gabungan'?' active':'') + '" onclick="setTugasKelas(\'gabungan\')">🔗 Gabungan</button>';
+  kelas.forEach(function(e) {
+    var id=e[0], k=e[1];
+    var isActive = activeTugasKelas === id;
+    html += '<button class="kelas-tab-btn' + (isActive?' active':'') + '" style="' + (isActive?'background:'+k.warna+';border-color:'+k.warna+';color:#fff':'') + '" onclick="setTugasKelas(\''+id+'\')">' + k.nama + '</button>';
+  });
+  bar.innerHTML = html;
+}
+
+function setTugasKelas(id) {
+  activeTugasKelas = id;
+  renderTugasTabBar();
+  renderTugas();
+}
+
 function setJadwalKelas(id, btn) {
   activeJadwalKelas = id;
   renderJadwalTabBar();
@@ -1075,9 +1073,6 @@ function setAbsenKelas(id, btn) {
   renderAbsen();
 }
 
-// ============================
-// JADWAL GABUNGAN
-// ============================
 function openGabunganModal() {
   if (!isAdmin) { showToast('Anda tidak memiliki akses admin', 'error'); return; }
   resetGabunganForm();
@@ -1093,7 +1088,6 @@ function renderGabunganKelasList() {
     container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0">Belum ada kelas. Tambah kelas terlebih dahulu.</div>';
     return;
   }
-  // Ambil kelas yang sudah dicentang (saat edit)
   var checked = {};
   container.querySelectorAll('input[type=checkbox]').forEach(function(cb) {
     if (cb.checked) checked[cb.value] = true;
@@ -1182,7 +1176,7 @@ function editGabungan(id) {
   document.getElementById('gabunganLink').value    = j.link||'';
   document.getElementById('gabunganCatatan').value = j.catatan||'';
   document.getElementById('modalGabunganTitle').textContent = '✏️ Edit Jadwal Gabungan';
-  // Render checklist dulu lalu centang
+
   renderGabunganKelasList();
   var checked = j.kelasList||[];
   checked.forEach(function(kid) {
@@ -1209,4 +1203,93 @@ function resetGabunganForm() {
   if (title) title.textContent = '🔗 Jadwal Kelas Gabungan';
   var cb = document.getElementById('gabunganKelasCheckbox');
   if (cb) cb.innerHTML = '';
+}
+
+function openTugasGabunganModal() {
+  if (!isAdmin) { showToast('Anda tidak memiliki akses admin', 'error'); return; }
+  resetTugasGabunganForm();
+  renderTugasGabunganKelasList();
+  document.getElementById('modalTugasGabungan').classList.add('active');
+}
+
+function renderTugasGabunganKelasList() {
+  var container = document.getElementById('tugasGabunganKelasCheckbox');
+  if (!container) return;
+  var kelas = Object.entries(appData.kelas);
+  if (kelas.length === 0) {
+    container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0">Belum ada kelas. Tambah kelas terlebih dahulu.</div>';
+    return;
+  }
+  container.innerHTML = kelas.map(function(e) {
+    var id=e[0], k=e[1];
+    return '<label class="gabungan-kelas-item" id="tglabel-'+id+'" style="--kcolor:'+(k.warna||'#6366f1')+'">'
+      + '<input type="checkbox" value="'+id+'" onchange="toggleTugasGabunganKelas(this)" />'
+      + '<span class="gabungan-kelas-dot" style="background:'+(k.warna||'#6366f1')+'"></span>'
+      + '<span class="gabungan-kelas-nama">'+k.nama+'</span>'
+      + '<span class="gabungan-kelas-count">'+(k.mahasiswa||[]).length+' mhs</span>'
+    + '</label>';
+  }).join('');
+}
+
+function toggleTugasGabunganKelas(cb) {
+  var label = document.getElementById('tglabel-'+cb.value);
+  if (label) label.classList.toggle('checked', cb.checked);
+}
+
+function saveTugasGabungan() {
+  var nama = document.getElementById('tugasGabunganNama').value.trim();
+  var deadline = document.getElementById('tugasGabunganDeadline').value;
+  var kelasList = [];
+  document.querySelectorAll('#tugasGabunganKelasCheckbox input:checked').forEach(function(cb){ kelasList.push(cb.value); });
+  if (!nama) { showToast('Nama tugas wajib diisi!', 'error'); return; }
+  if (!deadline) { showToast('Deadline wajib diisi!', 'error'); return; }
+  if (kelasList.length < 2) { showToast('Pilih minimal 2 kelas!', 'error'); return; }
+  var data = {
+    nama: nama, deadline: deadline, kelasList: kelasList,
+    matkul: document.getElementById('tugasGabunganMatkul').value.trim(),
+    tema: document.getElementById('tugasGabunganTema').value.trim(),
+    tipe: document.getElementById('tugasGabunganTipe').value,
+    link: document.getElementById('tugasGabunganLink').value.trim(),
+    isGabungan: true, createdAt: Date.now()
+  };
+  var eid = document.getElementById('tugasGabunganEditId').value;
+  if (eid) {
+    dbUpdate('gabunganTugas', eid, data).then(function(){ showToast('Tugas gabungan diperbarui! ✅','success'); closeModal('modalTugasGabungan'); resetTugasGabunganForm(); });
+  } else {
+    dbPush('gabunganTugas', data).then(function(){ showToast('Tugas gabungan ditambahkan! 🎉','success'); closeModal('modalTugasGabungan'); resetTugasGabunganForm(); });
+  }
+}
+
+function editTugasGabungan(id) {
+  var t = appData.gabunganTugas[id]; if (!t) return;
+  document.getElementById('tugasGabunganEditId').value = id;
+  document.getElementById('tugasGabunganNama').value = t.nama||'';
+  document.getElementById('tugasGabunganMatkul').value = t.matkul||'';
+  document.getElementById('tugasGabunganDeadline').value = t.deadline||'';
+  document.getElementById('tugasGabunganTipe').value = t.tipe||'individu';
+  document.getElementById('tugasGabunganTema').value = t.tema||'';
+  document.getElementById('tugasGabunganLink').value = t.link||'';
+  var titleEl = document.getElementById('modalTugasGabunganTitle');
+  if (titleEl) titleEl.textContent = '✏️ Edit Tugas Gabungan';
+  renderTugasGabunganKelasList();
+  (t.kelasList||[]).forEach(function(kid){
+    var cb = document.querySelector('#tugasGabunganKelasCheckbox input[value="'+kid+'"]');
+    if (cb) { cb.checked = true; toggleTugasGabunganKelas(cb); }
+  });
+  document.getElementById('modalTugasGabungan').classList.add('active');
+}
+
+function deleteTugasGabungan(id) {
+  if (!confirm('Hapus tugas gabungan ini?')) return;
+  dbRemove('gabunganTugas', id).then(function(){ showToast('Tugas gabungan dihapus','success'); });
+}
+
+function resetTugasGabunganForm() {
+  ['tugasGabunganEditId','tugasGabunganNama','tugasGabunganMatkul',
+   'tugasGabunganDeadline','tugasGabunganTema','tugasGabunganLink'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var tipe = document.getElementById('tugasGabunganTipe'); if (tipe) tipe.value = 'individu';
+  var title = document.getElementById('modalTugasGabunganTitle'); if (title) title.textContent = '🔗 Tugas Kelas Gabungan';
+  var cb = document.getElementById('tugasGabunganKelasCheckbox'); if (cb) cb.innerHTML = '';
 }
