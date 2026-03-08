@@ -3,31 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KelasKu — Platform Manajemen Kelas</title>
+<title>SiNila</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- LOGIN MODAL -->
 <div id="loginModal" class="modal-overlay active">
   <div class="modal-box login-box">
     <div class="login-brand">
       <div class="brand-icon">🎓</div>
-      <h1>KelasKu</h1>
+      <h1>SiNila</h1>
       <p>Platform manajemen kelas perkuliahan</p>
     </div>
     <div class="login-form">
       <div class="form-group">
         <label>Username</label>
-        <input type="text" id="loginUser" placeholder="Masukkan username admin" />
+        <input type="text" id="loginUser" placeholder="Masukkan username" />
       </div>
       <div class="form-group">
         <label>Password</label>
         <input type="password" id="loginPass" placeholder="Masukkan password" />
       </div>
       <div id="loginError" class="error-msg hidden">Username atau password salah</div>
-      <button class="btn-primary full-width" onclick="doLogin()">Masuk sebagai Admin</button>
+      <button class="btn-primary full-width" onclick="doLogin()">Masuk</button>
       <button class="btn-ghost full-width" onclick="enterAsGuest()">👁 Lihat sebagai Pengunjung</button>
     </div>
   </div>
@@ -38,7 +37,7 @@
   <div class="sidebar-header">
     <div class="logo">
       <span class="logo-icon">🎓</span>
-      <span class="logo-text">KelasKu</span>
+      <span class="logo-text">SiNila</span>
     </div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
   </div>
@@ -73,10 +72,8 @@
   </div>
 </aside>
 
-<!-- MAIN CONTENT -->
 <main class="main-content" id="mainContent">
 
-  <!-- TOP BAR -->
   <header class="topbar">
     <div class="topbar-left">
       <button class="mob-menu" onclick="toggleSidebar()">☰</button>
@@ -90,13 +87,10 @@
     </div>
   </header>
 
-  <!-- PAGES -->
-
-  <!-- DASHBOARD -->
   <section class="page active" id="page-dashboard">
     <div class="empty-hero" id="dashboardEmpty">
       <div class="empty-illustration">🏛️</div>
-      <h2>Selamat Datang di KelasKu</h2>
+      <h2>Selamat Datang di SiNila</h2>
       <p>Belum ada data. Mulai dengan membuat kelas terlebih dahulu.</p>
       <button class="btn-primary" onclick="showPage('kelas')" id="startBtn" style="display:none">Buat Kelas Pertama</button>
     </div>
@@ -137,7 +131,7 @@
     <div class="page-header">
       <div>
         <h2>Manajemen Kelas</h2>
-        <p class="subtitle">Kelola daftar kelas dan data mahasiswa</p>
+        <p class="subtitle">Kelola daftar kelas dan mahasiswa</p>
       </div>
       <button class="btn-primary" id="btnTambahKelas" onclick="openModal('modalKelas')" style="display:none">+ Tambah Kelas</button>
     </div>
@@ -161,7 +155,7 @@
             <tr>
               <th>No</th>
               <th>Nama</th>
-              <th>NIM</th>
+              <th>NPM</th>
               <th>Gender</th>
               <th>No. HP</th>
               <th>Email</th>
@@ -179,10 +173,15 @@
     <div class="page-header">
       <div>
         <h2>Jadwal Perkuliahan</h2>
-        <p class="subtitle">Semua jadwal mata kuliah dalam satu tampilan</p>
+        <p class="subtitle">Jadwal mata kuliah</p>
       </div>
-      <button class="btn-primary" id="btnTambahJadwal" onclick="openModal('modalJadwal')" style="display:none">+ Tambah Jadwal</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn-primary" id="btnTambahJadwal" onclick="openModal('modalJadwal')" style="display:none">+ Tambah Jadwal</button>
+        <button class="btn-gabungan" id="btnTambahGabungan" onclick="openGabunganModal()" style="display:none">🔗 Kelas Gabungan</button>
+      </div>
     </div>
+    <!-- Filter tab kelas -->
+    <div class="kelas-tab-bar" id="jadwalTabBar"></div>
     <div class="empty-state hidden" id="jadwalEmpty">
       <div class="empty-illustration">📅</div>
       <p>Belum ada jadwal. Buat jadwal pertama!</p>
@@ -225,6 +224,8 @@
       </div>
       <button class="btn-primary" id="btnTambahAbsen" onclick="openModal('modalAbsen')" style="display:none">+ Buat Sesi Absen</button>
     </div>
+    <!-- Filter tab kelas -->
+    <div class="kelas-tab-bar" id="absenTabBar"></div>
     <div class="empty-state hidden" id="absenEmpty">
       <div class="empty-illustration">✅</div>
       <p>Belum ada sesi absensi.</p>
@@ -237,7 +238,7 @@
     <div class="page-header">
       <div>
         <h2>Tugas & Kelompok</h2>
-        <p class="subtitle">Kelola tugas dan shuffle kelompok otomatis</p>
+        <p class="subtitle">Kelola tugas dan shuffle kelompok</p>
       </div>
       <button class="btn-primary" id="btnTambahTugas" onclick="openModal('modalTugas')" style="display:none">+ Tambah Tugas</button>
     </div>
@@ -250,9 +251,6 @@
 
 </main>
 
-<!-- ===== MODALS ===== -->
-
-<!-- Modal Kelas -->
 <div class="modal-overlay" id="modalKelas">
   <div class="modal-box modal-large">
     <div class="modal-header">
@@ -280,7 +278,7 @@
           </div>
         </div>
       </div>
-
+      
       <div class="form-divider">
         <span>👥 Daftar Mahasiswa</span>
         <div style="display:flex;gap:6px;align-items:center">
@@ -302,7 +300,7 @@
         <div id="importHelperBody" class="import-helper-body"></div>
         <div class="import-format-hint">
           <strong>Format kolom yang didukung:</strong>
-          Nama · NIM · Gender (L/P) · No.HP · Email · Keterangan
+          Nama · NPM · Gender (L/P) · No.HP · Email · Keterangan
           <br>Baris pertama boleh header, akan diabaikan otomatis.
         </div>
       </div>
@@ -313,7 +311,7 @@
             <tr>
               <th style="width:40px">No</th>
               <th>Nama Lengkap *</th>
-              <th style="width:140px">NIM</th>
+              <th style="width:140px">NPM</th>
               <th style="width:100px">Gender</th>
               <th style="width:130px">No. HP</th>
               <th style="width:170px">Email</th>
@@ -419,6 +417,94 @@
     <div class="modal-footer">
       <button class="btn-ghost" onclick="closeModal('modalJadwal')">Batal</button>
       <button class="btn-primary" onclick="saveJadwal()">Simpan Jadwal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Jadwal Gabungan -->
+<div class="modal-overlay" id="modalGabungan">
+  <div class="modal-box modal-large">
+    <div class="modal-header">
+      <h3 id="modalGabunganTitle">🔗 Jadwal Kelas Gabungan</h3>
+      <button class="modal-close" onclick="closeModal('modalGabungan')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="gabunganEditId">
+
+      <div class="form-divider"><span>📚 Informasi Mata Kuliah</span></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nama Mata Kuliah *</label>
+          <input type="text" id="gabunganMatkul" placeholder="Misal: Matematika Diskrit" />
+        </div>
+        <div class="form-group" style="max-width:100px">
+          <label>Kode MK</label>
+          <input type="text" id="gabunganKodeMk" placeholder="IF-201" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Dosen Pengampu</label>
+          <input type="text" id="gabunganDosen" placeholder="Nama lengkap dosen" />
+        </div>
+        <div class="form-group" style="max-width:80px">
+          <label>SKS</label>
+          <input type="number" id="gabunganSks" placeholder="3" min="1" max="6" />
+        </div>
+        <div class="form-group" style="max-width:140px">
+          <label>Semester</label>
+          <input type="text" id="gabunganSemester" placeholder="Ganjil 24/25" />
+        </div>
+      </div>
+
+      <div class="form-divider"><span>📅 Waktu & Tempat</span></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Hari *</label>
+          <select id="gabunganHari">
+            <option value="">Pilih Hari</option>
+            <option>Senin</option><option>Selasa</option><option>Rabu</option>
+            <option>Kamis</option><option>Jumat</option><option>Sabtu</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Jam Mulai *</label>
+          <input type="time" id="gabunganMulai" />
+        </div>
+        <div class="form-group">
+          <label>Jam Selesai *</label>
+          <input type="time" id="gabunganSelesai" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ruangan</label>
+          <input type="text" id="gabunganRuangan" placeholder="Aula / Gedung B - R.301" />
+        </div>
+        <div class="form-group">
+          <label>Mode Perkuliahan</label>
+          <select id="gabunganMode">
+            <option value="offline">🏫 Offline</option>
+            <option value="online">💻 Online</option>
+            <option value="hybrid">🔀 Hybrid</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Link (jika Online)</label>
+          <input type="text" id="gabunganLink" placeholder="https://meet.google.com/..." />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Catatan</label>
+        <input type="text" id="gabunganCatatan" placeholder="Contoh: Ujian bersama, dll." />
+      </div>
+
+      <div class="form-divider"><span>🏫 Kelas yang Digabung * <span style="font-weight:400;color:var(--text3)">(centang minimal 2 kelas)</span></span></div>
+      <div id="gabunganKelasCheckbox" class="gabungan-kelas-checkbox"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modalGabungan')">Batal</button>
+      <button class="btn-primary" onclick="saveGabungan()">Simpan Jadwal Gabungan</button>
     </div>
   </div>
 </div>
