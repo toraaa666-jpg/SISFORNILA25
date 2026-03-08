@@ -32,7 +32,7 @@
   </div>
 </div>
 
-<!-- SIDEBAR -->
+
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="logo">
@@ -126,7 +126,6 @@
     </div>
   </section>
 
-  <!-- KELAS -->
   <section class="page" id="page-kelas">
     <div class="page-header">
       <div>
@@ -140,7 +139,6 @@
       <p>Belum ada kelas. Tambahkan kelas pertama!</p>
     </div>
     <div class="kelas-grid" id="kelasGrid"></div>
-    <!-- Panel detail mahasiswa -->
     <div id="kelasMhsPanel" class="mhs-panel hidden">
       <div class="mhs-panel-header">
         <div>
@@ -168,7 +166,6 @@
     </div>
   </section>
 
-  <!-- JADWAL -->
   <section class="page" id="page-jadwal">
     <div class="page-header">
       <div>
@@ -180,13 +177,11 @@
         <button class="btn-gabungan" id="btnTambahGabungan" onclick="openGabunganModal()" style="display:none">🔗 Kelas Gabungan</button>
       </div>
     </div>
-    <!-- Filter tab kelas -->
     <div class="kelas-tab-bar" id="jadwalTabBar"></div>
     <div class="empty-state hidden" id="jadwalEmpty">
       <div class="empty-illustration">📅</div>
       <p>Belum ada jadwal. Buat jadwal pertama!</p>
     </div>
-    <!-- Grid jadwal per hari -->
     <div class="jadwal-board" id="jadwalBoard">
       <div class="jadwal-board-col" id="jcol-Senin">
         <div class="jadwal-col-header jh-senin">Senin</div>
@@ -215,7 +210,6 @@
     </div>
   </section>
 
-  <!-- ABSENSI -->
   <section class="page" id="page-absen">
     <div class="page-header">
       <div>
@@ -224,7 +218,6 @@
       </div>
       <button class="btn-primary" id="btnTambahAbsen" onclick="openModal('modalAbsen')" style="display:none">+ Buat Sesi Absen</button>
     </div>
-    <!-- Filter tab kelas -->
     <div class="kelas-tab-bar" id="absenTabBar"></div>
     <div class="empty-state hidden" id="absenEmpty">
       <div class="empty-illustration">✅</div>
@@ -233,15 +226,18 @@
     <div class="absen-list" id="absenList"></div>
   </section>
 
-  <!-- TUGAS & KELOMPOK -->
   <section class="page" id="page-tugas">
     <div class="page-header">
       <div>
         <h2>Tugas & Kelompok</h2>
         <p class="subtitle">Kelola tugas dan shuffle kelompok</p>
       </div>
-      <button class="btn-primary" id="btnTambahTugas" onclick="openModal('modalTugas')" style="display:none">+ Tambah Tugas</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn-primary" id="btnTambahTugas" onclick="openModal('modalTugas')" style="display:none">+ Tambah Tugas</button>
+        <button class="btn-gabungan" id="btnTambahTugasGabungan" onclick="openTugasGabunganModal()" style="display:none">🔗 Tugas Gabungan</button>
+      </div>
     </div>
+    <div class="kelas-tab-bar" id="tugasTabBar"></div>
     <div class="empty-state hidden" id="tugasEmpty">
       <div class="empty-illustration">📝</div>
       <p>Belum ada tugas. Buat tugas dan shuffle kelompok!</p>
@@ -288,7 +284,6 @@
         </div>
       </div>
 
-      <!-- Import helper panel -->
       <div id="importHelperPanel" class="import-helper hidden">
         <div class="import-helper-header">
           <span id="importHelperTitle">📄 Preview Import</span>
@@ -330,7 +325,6 @@
   </div>
 </div>
 
-<!-- Modal Jadwal -->
 <div class="modal-overlay" id="modalJadwal">
   <div class="modal-box modal-large">
     <div class="modal-header">
@@ -421,7 +415,6 @@
   </div>
 </div>
 
-<!-- Modal Jadwal Gabungan -->
 <div class="modal-overlay" id="modalGabungan">
   <div class="modal-box modal-large">
     <div class="modal-header">
@@ -509,7 +502,6 @@
   </div>
 </div>
 
-<!-- Modal Absen -->
 <div class="modal-overlay" id="modalAbsen">
   <div class="modal-box modal-large">
     <div class="modal-header">
@@ -542,7 +534,6 @@
   </div>
 </div>
 
-<!-- Modal Tugas -->
 <div class="modal-overlay" id="modalTugas">
   <div class="modal-box modal-large">
     <div class="modal-header">
@@ -608,7 +599,53 @@
   </div>
 </div>
 
-<!-- Modal Detail Absen -->
+<div class="modal-overlay" id="modalTugasGabungan">
+  <div class="modal-box modal-large">
+    <div class="modal-header">
+      <h3 id="modalTugasGabunganTitle">🔗 Tugas Kelas Gabungan</h3>
+      <button class="modal-close" onclick="closeModal('modalTugasGabungan')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="tugasGabunganEditId">
+      <div class="form-group">
+        <label>Nama Tugas *</label>
+        <input type="text" id="tugasGabunganNama" placeholder="Nama tugas / proyek" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mata Kuliah</label>
+          <input type="text" id="tugasGabunganMatkul" placeholder="Nama mata kuliah" />
+        </div>
+        <div class="form-group">
+          <label>Deadline *</label>
+          <input type="datetime-local" id="tugasGabunganDeadline" />
+        </div>
+        <div class="form-group" style="max-width:140px">
+          <label>Tipe</label>
+          <select id="tugasGabunganTipe">
+            <option value="individu">👤 Individu</option>
+            <option value="kelompok">👥 Kelompok</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tema / Deskripsi</label>
+        <textarea id="tugasGabunganTema" rows="3" placeholder="Deskripsi tugas..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Link / Referensi</label>
+        <input type="text" id="tugasGabunganLink" placeholder="https://..." />
+      </div>
+      <div class="form-divider"><span>🏫 Kelas yang Digabung * <span style="font-weight:400;color:var(--text3)">(centang minimal 2)</span></span></div>
+      <div id="tugasGabunganKelasCheckbox" class="gabungan-kelas-checkbox"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modalTugasGabungan')">Batal</button>
+      <button class="btn-primary" onclick="saveTugasGabungan()">Simpan Tugas Gabungan</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalAbsenDetail">
   <div class="modal-box modal-large">
     <div class="modal-header">
@@ -619,13 +656,10 @@
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-<!-- Import Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script src="app.js"></script>
