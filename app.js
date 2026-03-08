@@ -52,10 +52,10 @@ function dbRemove(col, id) {
 let _rt = null;
 function scheduleRender() {
   clearTimeout(_rt);
-  _rt = setTimeout(()=>{ renderKelas();renderJadwal();renderAbsen();renderTugas();updateDashboard();populateSelects(); }, 50);
+  _rt = setTimeout(()=>{ renderKelas();renderJadwal();renderAbsen();renderTugas();updateDashboard();populateSelects();renderTabBars(); }, 50);
 }
 function loadLocalData() {
-  ['kelas','jadwal','absen','tugas'].forEach(k => { appData[k] = lsGet(k); });
+  ['kelas','jadwal','absen','tugas','gabungan'].forEach(k => { appData[k] = lsGet(k); });
 }
 
 // Admin credentials — ganti sebelum deploy!
@@ -67,9 +67,11 @@ const ADMINS = [
 // State
 let isAdmin = false;
 let currentUser = null;
-let appData = { kelas:{}, jadwal:{}, absen:{}, tugas:{} };
+let appData = { kelas:{}, jadwal:{}, absen:{}, tugas:{}, gabungan:{} };
 let selectedColor = "#6366f1";
 let shuffledGroups = [];
+let activeJadwalKelas = 'semua';
+let activeAbsenKelas = 'semua';
 
 // ============================
 // AUTH
@@ -135,7 +137,7 @@ function showFirebaseWarning() {
 function updateAdminUI() {
   // Tampilkan/sembunyikan tombol admin dengan getElementById + inline style
   var show = isAdmin ? 'inline-block' : 'none';
-  var adminBtns = ['logoutBtn','startBtn','btnTambahKelas','btnTambahJadwal','btnTambahAbsen','btnTambahTugas'];
+  var adminBtns = ['logoutBtn','startBtn','btnTambahKelas','btnTambahJadwal','btnTambahAbsen','btnTambahTugas','btnTambahGabungan'];
   adminBtns.forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.style.display = show;
@@ -153,16 +155,17 @@ function updateAdminUI() {
 // FIREBASE LISTENERS
 // ============================
 function listenFirebase() {
-  db.ref('kelas').on('value', snap => { appData.kelas = snap.val()||{}; renderKelas(); updateDashboard(); populateSelects(); });
-  db.ref('jadwal').on('value', snap => { appData.jadwal = snap.val()||{}; renderJadwal(); updateDashboard(); });
-  db.ref('absen').on('value', snap => { appData.absen = snap.val()||{}; renderAbsen(); updateDashboard(); });
+  db.ref('kelas').on('value', snap => { appData.kelas = snap.val()||{}; renderKelas(); updateDashboard(); populateSelects(); renderTabBars(); });
+  db.ref('jadwal').on('value', snap => { appData.jadwal = snap.val()||{}; renderJadwal(); updateDashboard(); renderTabBars(); });
+  db.ref('gabungan').on('value', snap => { appData.gabungan = snap.val()||{}; renderJadwal(); updateDashboard(); });
+  db.ref('absen').on('value', snap => { appData.absen = snap.val()||{}; renderAbsen(); updateDashboard(); renderTabBars(); });
   db.ref('tugas').on('value', snap => { appData.tugas = snap.val()||{}; renderTugas(); updateDashboard(); });
 }
 
 // ============================
 // NAVIGATION
 // ============================
-function showPage(page) {
+function showPage(page, pushState = true) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
@@ -171,6 +174,7 @@ function showPage(page) {
   const titles = {dashboard:'Dashboard',kelas:'Kelas',jadwal:'Jadwal',absen:'Absensi',tugas:'Tugas & Kelompok'};
   document.getElementById('pageTitle').textContent = titles[page]||page;
   if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
+  if (pushState) history.pushState({ page }, '', '#' + page);
 }
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
 
@@ -684,27 +688,89 @@ function deleteJadwal(id) {
   dbRemove('jadwal',id).then(function(){showToast('Jadwal dihapus','success');});
 }
 
+function buildJadwalCard(id, j, hc, type) {
+  // type: 'reguler' | 'gabungan'
+  var durasi = calcDurasi(j.mulai, j.selesai);
+  var modeLbl = j.mode==='online'?'💻 Online':j.mode==='hybrid'?'🔀 Hybrid':'🏫 Offline';
+  var modeCls = j.mode==='online'?'jmode-online':j.mode==='hybrid'?'jmode-hybrid':'jmode-offline';
+  var kelasBadge = '';
+  if (type === 'gabungan') {
+    var kelasList = (j.kelasList||[]).map(function(kid){
+      var kk = appData.kelas[kid];
+      return kk ? '<span class="jcard-kelas jcard-kelas-chip" style="background:' + (kk.warna||'#6366f1') + '22;border-color:' + (kk.warna||'#6366f1') + '44;color:' + (kk.warna||'#6366f1') + '">' + kk.nama + '</span>' : '';
+    }).join('');
+    kelasBadge = '<div class="jcard-gabungan-tag">🔗 Kelas Gabungan</div><div class="jcard-kelas-chips">' + kelasList + '</div>';
+  } else {
+    var k = appData.kelas[j.kelasId];
+    kelasBadge = k ? '<div class="jcard-kelas">' + k.nama + '</div>' : '';
+  }
+  var editFn = type==='gabungan' ? 'editGabungan' : 'editJadwal';
+  var delFn  = type==='gabungan' ? 'deleteGabungan' : 'deleteJadwal';
+  var adminBtns = isAdmin
+    ? '<div class="jcard-actions">'
+        + '<button class="btn-sm btn-edit" onclick="' + editFn + '(\'' + id + '\')">✏️</button>'
+        + '<button class="btn-sm btn-del" onclick="' + delFn + '(\'' + id + '\')">🗑</button>'
+      + '</div>'
+    : '';
+  return '<div class="jadwal-card' + (type==='gabungan'?' jadwal-card-gabungan':'') + '" style="border-left-color:' + hc.bg + '">'
+    + '<div class="jcard-time">'
+        + '<span class="jcard-jam">' + (j.mulai||'?') + ' – ' + (j.selesai||'?') + '</span>'
+        + (durasi ? '<span class="jcard-durasi">' + durasi + '</span>' : '')
+      + '</div>'
+    + '<div class="jcard-matkul">' + (j.matkul||'–') + '</div>'
+    + (j.kodeMk ? '<div class="jcard-kode">' + j.kodeMk + '</div>' : '')
+    + kelasBadge
+    + '<div class="jcard-meta">'
+        + (j.dosen ? '<div class="jcard-meta-row">👨‍🏫 ' + j.dosen + (j.sks?' · '+j.sks+' SKS':'') + '</div>' : '')
+        + (j.ruangan ? '<div class="jcard-meta-row">📍 ' + j.ruangan + '</div>' : '')
+        + '<div class="jcard-meta-row"><span class="jcard-mode ' + modeCls + '">' + modeLbl + '</span></div>'
+        + (j.mode!=='offline'&&j.link ? '<div class="jcard-meta-row"><a href="' + j.link + '" target="_blank" style="color:var(--accent2);font-size:11px;">🔗 Link Meet</a></div>' : '')
+        + (j.catatan ? '<div class="jcard-meta-row jcard-catatan">📝 ' + j.catatan + '</div>' : '')
+      + '</div>'
+    + adminBtns
+  + '</div>';
+}
+
 function renderJadwal() {
   var empty = document.getElementById('jadwalEmpty');
   var board = document.getElementById('jadwalBoard');
   var entries = Object.entries(appData.jadwal);
+  var gabEntries = Object.entries(appData.gabungan||{});
+  var allEmpty = entries.length === 0 && gabEntries.length === 0;
 
-  if (entries.length === 0) {
+  if (allEmpty) {
     empty.classList.remove('hidden');
     board.style.display = 'none';
-    // kosongkan semua kolom
     DAYS.forEach(function(d){ var b=document.getElementById('jbody-'+d); if(b) b.innerHTML=''; });
     return;
   }
   empty.classList.add('hidden');
   board.style.display = '';
 
+  // Filter
+  var filter = activeJadwalKelas;
+
   // Kelompokkan per hari
   var byDay = {};
   DAYS.forEach(function(d){ byDay[d]=[]; });
+
+  // Jadwal reguler
   entries.forEach(function(e){
     var id=e[0], j=e[1];
-    if(byDay[j.hari]) byDay[j.hari].push({id:id, data:j});
+    if (!j.hari) return;
+    var pass = filter === 'semua' || j.kelasId === filter;
+    if (!pass) return;
+    if(byDay[j.hari]) byDay[j.hari].push({id:id, data:j, type:'reguler'});
+  });
+
+  // Jadwal gabungan
+  gabEntries.forEach(function(e){
+    var id=e[0], j=e[1];
+    if (!j.hari) return;
+    var pass = filter === 'semua' || filter === 'gabungan' ||
+               (j.kelasList||[]).indexOf(filter) > -1;
+    if (!pass) return;
+    if(byDay[j.hari]) byDay[j.hari].push({id:id, data:j, type:'gabungan'});
   });
 
   DAYS.forEach(function(day) {
@@ -713,44 +779,13 @@ function renderJadwal() {
     var items = byDay[day].sort(function(a,b){
       return (a.data.mulai||'').localeCompare(b.data.mulai||'');
     });
-
     if(items.length === 0) {
       body.innerHTML = '<div class="jadwal-empty-day">Belum ada jadwal</div>';
       return;
     }
-
     var hc = HCLR[day] || {bg:'#666', light:'rgba(100,100,120,0.1)', text:'#aaa'};
-    body.innerHTML = items.map(function(item) {
-      var id=item.id, j=item.data;
-      var k = appData.kelas[j.kelasId];
-      var durasi = calcDurasi(j.mulai, j.selesai);
-      var modeLbl = j.mode==='online'?'💻 Online':j.mode==='hybrid'?'🔀 Hybrid':'🏫 Offline';
-      var modeCls = j.mode==='online'?'jmode-online':j.mode==='hybrid'?'jmode-hybrid':'jmode-offline';
-
-      var adminBtns = isAdmin
-        ? '<div class="jcard-actions">'
-            + '<button class="btn-sm btn-edit" onclick="editJadwal(\'' + id + '\')">✏️</button>'
-            + '<button class="btn-sm btn-del" onclick="deleteJadwal(\'' + id + '\')">🗑</button>'
-          + '</div>'
-        : '';
-
-      return '<div class="jadwal-card" style="border-left-color:' + hc.bg + '">'
-        + '<div class="jcard-time">'
-            + '<span class="jcard-jam">' + (j.mulai||'?') + ' – ' + (j.selesai||'?') + '</span>'
-            + (durasi ? '<span class="jcard-durasi">' + durasi + '</span>' : '')
-          + '</div>'
-        + '<div class="jcard-matkul">' + (j.matkul||'–') + '</div>'
-        + (j.kodeMk ? '<div class="jcard-kode">' + j.kodeMk + '</div>' : '')
-        + (k ? '<div class="jcard-kelas">' + k.nama + '</div>' : '')
-        + '<div class="jcard-meta">'
-            + (j.dosen ? '<div class="jcard-meta-row">👨‍🏫 ' + j.dosen + (j.sks?' · '+j.sks+' SKS':'') + '</div>' : '')
-            + (j.ruangan ? '<div class="jcard-meta-row">📍 ' + j.ruangan + '</div>' : '')
-            + '<div class="jcard-meta-row"><span class="jcard-mode ' + modeCls + '">' + modeLbl + '</span></div>'
-            + (j.mode!=='offline'&&j.link ? '<div class="jcard-meta-row"><a href="' + j.link + '" target="_blank" style="color:var(--accent2);font-size:11px;">🔗 Link Meet</a></div>' : '')
-            + (j.catatan ? '<div class="jcard-meta-row jcard-catatan">📝 ' + j.catatan + '</div>' : '')
-          + '</div>'
-        + adminBtns
-      + '</div>';
+    body.innerHTML = items.map(function(item){
+      return buildJadwalCard(item.id, item.data, hc, item.type);
     }).join('');
   });
 }
@@ -828,9 +863,16 @@ function deleteAbsen(id) {
 }
 function renderAbsen() {
   const list=document.getElementById('absenList'), empty=document.getElementById('absenEmpty');
-  const entries=Object.entries(appData.absen).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
-  if(entries.length===0){ empty.classList.remove('hidden'); list.innerHTML=''; return; }
+  const allEntries=Object.entries(appData.absen).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
+  const entries = activeAbsenKelas === 'semua'
+    ? allEntries
+    : allEntries.filter(([id,a]) => a.kelasId === activeAbsenKelas);
+  if(allEntries.length===0){ empty.classList.remove('hidden'); list.innerHTML=''; return; }
   empty.classList.add('hidden');
+  if(entries.length===0){
+    list.innerHTML='<div style="text-align:center;padding:48px 0;color:var(--text3)"><div style="font-size:40px;margin-bottom:12px">✅</div><p>Belum ada sesi absensi untuk kelas ini.</p></div>';
+    return;
+  }
   list.innerHTML=entries.map(([id,a])=>{
     const k=appData.kelas[a.kelasId], c=k?.warna||'#6366f1';
     const kehadiran=a.kehadiran||{}, hadir=Object.values(kehadiran).filter(Boolean).length, total=Object.keys(kehadiran).length;
@@ -959,6 +1001,10 @@ function renderTugas() {
 document.addEventListener('DOMContentLoaded', () => {
   const tipe = document.getElementById('tugasTipe');
   if (tipe) tipe.addEventListener('change', function(){ document.getElementById('kelompokSection').style.display=this.value==='kelompok'?'':'none'; });
+  window.addEventListener('popstate', function(e) {
+  var page = (e.state && e.state.page) ? e.state.page : 'dashboard';
+  showPage(page, false);
+});
 });
 
 // ============================
@@ -980,3 +1026,187 @@ function showToast(msg, type='success') {
 }
 
 selectedColor = "#6366f1";
+// ============================
+// TAB BAR FILTER (Jadwal & Absen)
+// ============================
+function renderTabBars() {
+  renderJadwalTabBar();
+  renderAbsenTabBar();
+}
+
+function renderJadwalTabBar() {
+  var bar = document.getElementById('jadwalTabBar');
+  if (!bar) return;
+  var kelas = Object.entries(appData.kelas);
+  var html = '<button class="kelas-tab-btn' + (activeJadwalKelas==='semua'?' active':'') + '" onclick="setJadwalKelas(\'semua\',this)">📋 Semua</button>';
+  html += '<button class="kelas-tab-btn kelas-tab-gabungan' + (activeJadwalKelas==='gabungan'?' active':'') + '" onclick="setJadwalKelas(\'gabungan\',this)">🔗 Gabungan</button>';
+  kelas.forEach(function(e) {
+    var id=e[0], k=e[1];
+    var isActive = activeJadwalKelas === id;
+    html += '<button class="kelas-tab-btn' + (isActive?' active':'') + '" style="' + (isActive?'background:'+k.warna+';border-color:'+k.warna+';color:#fff':'') + '" onclick="setJadwalKelas(\''+id+'\',this)" data-color="'+k.warna+'">'
+      + k.nama + '</button>';
+  });
+  bar.innerHTML = html;
+}
+
+function renderAbsenTabBar() {
+  var bar = document.getElementById('absenTabBar');
+  if (!bar) return;
+  var kelas = Object.entries(appData.kelas);
+  var html = '<button class="kelas-tab-btn' + (activeAbsenKelas==='semua'?' active':'') + '" onclick="setAbsenKelas(\'semua\',this)">📋 Semua</button>';
+  kelas.forEach(function(e) {
+    var id=e[0], k=e[1];
+    var isActive = activeAbsenKelas === id;
+    html += '<button class="kelas-tab-btn' + (isActive?' active':'') + '" style="' + (isActive?'background:'+k.warna+';border-color:'+k.warna+';color:#fff':'') + '" onclick="setAbsenKelas(\''+id+'\',this)" data-color="'+k.warna+'">'
+      + k.nama + '</button>';
+  });
+  bar.innerHTML = html;
+}
+
+function setJadwalKelas(id, btn) {
+  activeJadwalKelas = id;
+  renderJadwalTabBar();
+  renderJadwal();
+}
+
+function setAbsenKelas(id, btn) {
+  activeAbsenKelas = id;
+  renderAbsenTabBar();
+  renderAbsen();
+}
+
+// ============================
+// JADWAL GABUNGAN
+// ============================
+function openGabunganModal() {
+  if (!isAdmin) { showToast('Anda tidak memiliki akses admin', 'error'); return; }
+  resetGabunganForm();
+  renderGabunganKelasList();
+  document.getElementById('modalGabungan').classList.add('active');
+}
+
+function renderGabunganKelasList() {
+  var container = document.getElementById('gabunganKelasCheckbox');
+  if (!container) return;
+  var kelas = Object.entries(appData.kelas);
+  if (kelas.length === 0) {
+    container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0">Belum ada kelas. Tambah kelas terlebih dahulu.</div>';
+    return;
+  }
+  // Ambil kelas yang sudah dicentang (saat edit)
+  var checked = {};
+  container.querySelectorAll('input[type=checkbox]').forEach(function(cb) {
+    if (cb.checked) checked[cb.value] = true;
+  });
+  container.innerHTML = kelas.map(function(e) {
+    var id=e[0], k=e[1];
+    var isChecked = checked[id] || false;
+    return '<label class="gabungan-kelas-item' + (isChecked?' checked':'') + '" id="gklabel-'+id+'" style="--kcolor:' + (k.warna||'#6366f1') + '">'
+      + '<input type="checkbox" value="'+id+'"' + (isChecked?' checked':'') + ' onchange="toggleGabunganKelas(this)" />'
+      + '<span class="gabungan-kelas-dot" style="background:' + (k.warna||'#6366f1') + '"></span>'
+      + '<span class="gabungan-kelas-nama">' + k.nama + '</span>'
+      + '<span class="gabungan-kelas-count">' + (k.mahasiswa||[]).length + ' mhs</span>'
+    + '</label>';
+  }).join('');
+}
+
+function toggleGabunganKelas(cb) {
+  var label = document.getElementById('gklabel-' + cb.value);
+  if (label) label.classList.toggle('checked', cb.checked);
+}
+
+function getGabunganCheckedKelas() {
+  var result = [];
+  document.querySelectorAll('#gabunganKelasCheckbox input[type=checkbox]:checked').forEach(function(cb) {
+    result.push(cb.value);
+  });
+  return result;
+}
+
+function saveGabungan() {
+  var matkul = document.getElementById('gabunganMatkul').value.trim();
+  var hari   = document.getElementById('gabunganHari').value;
+  var mulai  = document.getElementById('gabunganMulai').value;
+  var selesai= document.getElementById('gabunganSelesai').value;
+  var kelasList = getGabunganCheckedKelas();
+
+  if (!matkul) { showToast('Nama mata kuliah wajib diisi!', 'error'); return; }
+  if (!hari || !mulai || !selesai) { showToast('Hari dan jam wajib diisi!', 'error'); return; }
+  if (kelasList.length < 2) { showToast('Pilih minimal 2 kelas untuk digabung!', 'error'); return; }
+
+  var data = {
+    matkul: matkul,
+    kodeMk: document.getElementById('gabunganKodeMk').value.trim(),
+    dosen:  document.getElementById('gabunganDosen').value.trim(),
+    sks:    document.getElementById('gabunganSks').value,
+    semester: document.getElementById('gabunganSemester').value.trim(),
+    hari: hari, mulai: mulai, selesai: selesai,
+    ruangan: document.getElementById('gabunganRuangan').value.trim(),
+    mode:    document.getElementById('gabunganMode').value,
+    link:    document.getElementById('gabunganLink').value.trim(),
+    catatan: document.getElementById('gabunganCatatan').value.trim(),
+    kelasList: kelasList,
+    isGabungan: true,
+    createdAt: Date.now()
+  };
+
+  var eid = document.getElementById('gabunganEditId').value;
+  if (eid) {
+    dbUpdate('gabungan', eid, data).then(function() {
+      showToast('Jadwal gabungan diperbarui! ✅', 'success');
+      closeModal('modalGabungan');
+      resetGabunganForm();
+    });
+  } else {
+    dbPush('gabungan', data).then(function() {
+      showToast('Jadwal gabungan ditambahkan! 🎉', 'success');
+      closeModal('modalGabungan');
+      resetGabunganForm();
+    });
+  }
+}
+
+function editGabungan(id) {
+  var j = appData.gabungan[id]; if (!j) return;
+  document.getElementById('gabunganEditId').value = id;
+  document.getElementById('gabunganMatkul').value  = j.matkul||'';
+  document.getElementById('gabunganKodeMk').value  = j.kodeMk||'';
+  document.getElementById('gabunganDosen').value   = j.dosen||'';
+  document.getElementById('gabunganSks').value     = j.sks||'';
+  document.getElementById('gabunganSemester').value= j.semester||'';
+  document.getElementById('gabunganHari').value    = j.hari||'';
+  document.getElementById('gabunganMulai').value   = j.mulai||'';
+  document.getElementById('gabunganSelesai').value = j.selesai||'';
+  document.getElementById('gabunganRuangan').value = j.ruangan||'';
+  document.getElementById('gabunganMode').value    = j.mode||'offline';
+  document.getElementById('gabunganLink').value    = j.link||'';
+  document.getElementById('gabunganCatatan').value = j.catatan||'';
+  document.getElementById('modalGabunganTitle').textContent = '✏️ Edit Jadwal Gabungan';
+  // Render checklist dulu lalu centang
+  renderGabunganKelasList();
+  var checked = j.kelasList||[];
+  checked.forEach(function(kid) {
+    var cb = document.querySelector('#gabunganKelasCheckbox input[value="'+kid+'"]');
+    if (cb) { cb.checked = true; toggleGabunganKelas(cb); }
+  });
+  document.getElementById('modalGabungan').classList.add('active');
+}
+
+function deleteGabungan(id) {
+  if (!confirm('Hapus jadwal gabungan ini?')) return;
+  dbRemove('gabungan', id).then(function() { showToast('Jadwal gabungan dihapus', 'success'); });
+}
+
+function resetGabunganForm() {
+  ['gabunganEditId','gabunganMatkul','gabunganKodeMk','gabunganDosen','gabunganSks',
+   'gabunganSemester','gabunganHari','gabunganMulai','gabunganSelesai',
+   'gabunganRuangan','gabunganLink','gabunganCatatan'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var modeEl = document.getElementById('gabunganMode');
+  if (modeEl) modeEl.value = 'offline';
+  var title = document.getElementById('modalGabunganTitle');
+  if (title) title.textContent = '🔗 Jadwal Kelas Gabungan';
+  var cb = document.getElementById('gabunganKelasCheckbox');
+  if (cb) cb.innerHTML = '';
+}
